@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Book Search</title>
+</head>
+<body>
+    <h1>Book Search</h1>
+    <form action="/search" method="GET">
+        <label for="title">Enter Book Title:</label>
+        <input type="text" name="title" id="title">
+        <input type="submit" value="Search">
+    </form>
+    {{if .Found}}
+    <h2>Book Information:</h2>
+    <p>Book Title: {{.Title}}</p>
+    <p>Author: {{.Author}}</p>
+    <p>Pages: {{.Pages}}</p>
+    <p>Rating: {{printf "%.2f" .Rating}}</p>
+    {{else}}
+    <p>Book not found.</p>
+    {{end}}
+</body>
+</html>
