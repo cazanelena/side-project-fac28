@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Book Search</title>
+    <link rel="stylesheet" type="text/css" href="/static/css/main.css"> 
 </head>
 <body>
     <h1>Book Search</h1>
@@ -10,14 +11,24 @@
         <input type="text" name="title" id="title">
         <input type="submit" value="Search">
     </form>
-    {{if .Found}}
-    <h2>Book Information:</h2>
-    <p>Book Title: {{.Title}}</p>
-    <p>Author: {{.Author}}</p>
-    <p>Pages: {{.Pages}}</p>
-    <p>Rating: {{printf "%.2f" .Rating}}</p>
+
+    {{if .Books}}
+    <h2>Search Results:</h2>
+    
+    <section class='main-section'>
+        {{range .Books}}
+        <div class='card'> 
+            <p>Book Title: {{.Title}}</p>
+            <p>Author: {{.Author}}</p>
+            <p>Pages: {{.Pages}}</p>
+            <p>Rating: {{printf "%.2f" .Rating}}</p>
+        </div>
+        {{end}}
+    </section>
+
     {{else}}
-    <p>Book not found.</p>
+    <p>No books found matching the search criteria: {{.Query}}</p>
     {{end}}
+
 </body>
 </html>

@@ -1,0 +1,56 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-family: 'Roboto', sans-serif;
+  border: 1px solid green;
+}
+  
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: Helvetica;
+    width: 100%;
+  }
+  h1 {
+    margin: 0;
+    padding: 8px 48px;
+    background: #333;
+    color: #fff;
+    font-size: 24px;
+  }
+
+  h2 {
+    margin: 30px;
+  }
+  form {
+    margin: 30px;
+  }
+  .main-section {
+    display: flex;
+    flex-wrap: wrap;
+    background: #bbb;
+    flex-direction: row;
+    justify-content: center;
+    margin-top: 20px;
+    row-gap: 20px;
+    column-gap: 20px;
+  }
+  .card {
+    display: flex;
+    width: 400px;
+    flex-direction: column;
+  
+    border: 1px solid #CAD0D2;
+    border-radius: 4px;
+    overflow: hidden;
+    padding: 20px;
+    background-color: #d8d1d1;
+    
+
+  }
+  
