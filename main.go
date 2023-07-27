@@ -6,9 +6,9 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-
-	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/cazanelena/book-app/register"
 )
 
 const (
@@ -27,7 +27,8 @@ type BookData struct {
 	Rating float64
 }
 
-var templates = "./templates/"
+
+var tpl *template.Template
 
 func main() {
 	// Connecting to the database
@@ -39,12 +40,23 @@ func main() {
 	}
 	defer db.Close()
 
+	// Check the database connection
+	if err = db.Ping(); err != nil {
+		log.Fatal("Error pinging the database: ", err)
+	}
+
 	// Initialize the route
-	r := mux.NewRouter()
+	tpl = template.Must(template.ParseGlob("templates/*html"))
 
 	// Define routes
-	r.HandleFunc("/", homeHandler)
-	r.HandleFunc("/search", searchHandler(db))
+	http.HandleFunc("/", homeHandler)
+	http.HandleFunc("/search", searchHandler(db))
+	http.HandleFunc("/login", loginHandler)
+
+	// Register the /registerauth route with a custom handler that has the database connection.
+	http.HandleFunc("/registerauth", func(w http.ResponseWriter, r *http.Request) {
+		register.RegisterAuthHandler(w, r, db)
+	})
 
 	// Serve static files (CSS, JS, etc.)
 	fs := http.FileServer(http.Dir("static"))
@@ -52,58 +64,59 @@ func main() {
 
 	// Start the server
 	fmt.Println("Server listening on port 8080")
-	http.Handle("/", r)
+	// http.Handle("/", r)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	// fmt.Fprint(w, "Welcome to the Book Search!\nUse /search to find a book.")
-	tpl := template.Must(template.ParseFiles(templates + "search.html"))
-	tpl.Execute(w, nil)
+	tpl.ExecuteTemplate(w, "search.html", nil)
 }
-
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	tpl.ExecuteTemplate(w, "login.html", nil)
+}
 
 func searchHandler(db *sql.DB) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        // Parse the query parameter from the URL
-        query := r.URL.Query().Get("title")
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Parse the query parameter from the URL
+		query := r.URL.Query().Get("title")
 
-        // Perform the database query
-        rows, err := db.Query("SELECT title, authors, num_pages, average_rating FROM books WHERE title ILIKE '%' || $1 || '%'", query)
-        if err != nil {
-            log.Printf("Database query error: %v", err)
-            http.Error(w, "Database query error", http.StatusInternalServerError)
-            return
-        }
-        defer rows.Close()
+		// Perform the database query
+		rows, err := db.Query("SELECT title, authors, num_pages, average_rating FROM books WHERE title ILIKE '%' || $1 || '%'", query)
+		if err != nil {
+			log.Printf("Database query error: %v", err)
+			http.Error(w, "Database query error", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
 
-        // Process the query results
-        var books []BookData
+		// Process the query results
+		var books []BookData
 
-        for rows.Next() {
-            var bookData BookData
-            err := rows.Scan(&bookData.Title, &bookData.Author, &bookData.Pages, &bookData.Rating)
-            if err != nil {
-                log.Printf("Error scanning query results: %v", err)
-                http.Error(w, "Error processing query results", http.StatusInternalServerError)
-                return
-            }
+		for rows.Next() {
+			var bookData BookData
+			err := rows.Scan(&bookData.Title, &bookData.Author, &bookData.Pages, &bookData.Rating)
+			if err != nil {
+				log.Printf("Error scanning query results: %v", err)
+				http.Error(w, "Error processing query results", http.StatusInternalServerError)
+				return
+			}
 
-            // Set the Found flag to true since a book is found
-            bookData.Found = true
+			// Set the Found flag to true since a book is found
+			bookData.Found = true
 
-            books = append(books, bookData)
-        }
+			books = append(books, bookData)
+		}
 
+		tpl := template.Must(template.ParseFiles("./templates/search.html"))
 
-        tpl := template.Must(template.ParseFiles(templates + "search.html"))
+		// Create a map to pass data to the template
+		data := map[string]interface{}{
+			"Books": books,
+			"Query": query, // Pass the query string to the template
+		}
 
-        // Create a map to pass data to the template
-        data := map[string]interface{}{
-            "Books": books,
-            "Query": query, // Pass the query string to the template
-        }
-		
-        tpl.Execute(w, data)
-    }
+		tpl.Execute(w, data)
+	}
 }
+
