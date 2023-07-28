@@ -13,6 +13,12 @@ import (
 
 var tpl *template.Template
 
+// registerHandler serves form for registring new users
+func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("*****registerHandler running*****")
+	tpl.ExecuteTemplate(w, "register.html", nil)
+}
+
 func RegisterAuthHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	fmt.Println("*********registerAuthHandler running*****")
 	r.ParseForm()
