@@ -11,6 +11,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
+	// "github.com/gorilla/context"
+	// "github.com/gorilla/sessions"
 )
 
 const (
@@ -47,7 +49,7 @@ func main() {
 	}
 
 	// Initialize the route
-	tpl = template.Must(template.ParseGlob("templates/*html"))
+	tpl = template.Must(template.ParseGlob("templates/*.html"))
 
 	// Define routes
 	http.HandleFunc("/", homeHandler)
@@ -85,7 +87,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	tpl.ExecuteTemplate(w, "login.html", nil)
 }
 
-
 func loginAuthHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	fmt.Println("********loginAuthHandler running*******")
 	r.ParseForm()
@@ -101,7 +102,7 @@ func loginAuthHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	if err == sql.ErrNoRows {
 		// If the username does not exist, show a message asking the user to register first.
 		fmt.Println("Username does not exist. Please register first.")
-		tpl.ExecuteTemplate(w, "register.html", "Username does not exist in our database. Please register first.")
+		tpl.ExecuteTemplate(w, "login.html", "Username does not exist in our database. Please register first.")
 		return
 	} else if err != nil {
 		// Handle other errors that might occur during the database query.
@@ -125,10 +126,11 @@ func loginAuthHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	// If the password is correct, the user has successfully logged in.
-	fmt.Fprint(w, "You have successfully logged in :)")
+	// fmt.Fprint(w, "You have successfully logged in :)")
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 
 }
-
 
 func searchHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +164,7 @@ func searchHandler(db *sql.DB) http.HandlerFunc {
 			books = append(books, bookData)
 		}
 
-		tpl := template.Must(template.ParseFiles("./templates/search.html"))
+		//tpl := template.Must(template.ParseFiles("./templates/search.html"))
 
 		// Create a map to pass data to the template
 		data := map[string]interface{}{
@@ -170,6 +172,6 @@ func searchHandler(db *sql.DB) http.HandlerFunc {
 			"Query": query, // Pass the query string to the template
 		}
 
-		tpl.Execute(w, data)
+		tpl.ExecuteTemplate(w, "search.html", data)
 	}
 }
