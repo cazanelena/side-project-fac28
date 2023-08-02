@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Successful registration</title>
+    <link rel="stylesheet" type="text/css" href="/static/css/main.css" />
+    <link rel="stylesheet" type="text/css" href="/static/css/successful_registration.css" />
+  </head>
+  <body>
+    {{template "Header"}}
+    <div class="main-content">
+      <h1>Congrats, your account has been successfully created!</h1>
+      <button onclick="redirectToLogin()">Login</button>
+    </div>
+    <script>
+      function redirectToLogin() {
+        window.location.href = "/login"; // Redirect to the login page
+      }
+    </script>
+  </body>
+</html>

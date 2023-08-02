@@ -125,5 +125,6 @@ func RegisterAuthHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		tpl.ExecuteTemplate(w, "register.html", "there was a problem registering account")
 		return
 	}
-	fmt.Fprint(w, "congrats, your account has been successfully created")
+	tpl.ExecuteTemplate(w, "successful_registration.html", "congrats, your account has been successfully created")
+	// fmt.Fprint(w, "congrats, your account has been successfully created")
 }
