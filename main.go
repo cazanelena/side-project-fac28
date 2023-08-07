@@ -11,8 +11,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
-	// "github.com/gorilla/context"
-	// "github.com/gorilla/sessions"
+	"github.com/gorilla/context"
+	"github.com/gorilla/sessions"
 )
 
 const (
@@ -29,9 +29,11 @@ type BookData struct {
 	Author string
 	Pages  int
 	Rating float64
+	Isbn   string
 }
 
 var tpl *template.Template
+var store = sessions.NewCookieStore([]byte("super-secret"))
 
 func main() {
 	// Connecting to the database
@@ -55,7 +57,7 @@ func main() {
 	http.HandleFunc("/", homeHandler)
 	http.HandleFunc("/search", searchHandler(db))
 	http.HandleFunc("/login", loginHandler)
-
+	http.HandleFunc("/logout", logoutHandler)
 	http.HandleFunc("/loginauth", func(w http.ResponseWriter, r *http.Request) {
 		loginAuthHandler(w, r, db)
 	})
@@ -75,7 +77,9 @@ func main() {
 	// Start the server
 	fmt.Println("Server listening on port 8080")
 	// http.Handle("/", r)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	// log.Fatal(http.ListenAndServe(":8080", nil))
+	// // if you are not using gorilla/mux, you need to wrap your handler with context.ClearHandler
+	http.ListenAndServe("localhost:8080", context.ClearHandler(http.DefaultServeMux))
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +99,7 @@ func loginAuthHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	fmt.Println("username:", username, "password:", password)
 
 	// Check if the username (email) exists in the database
-	var hash string
+	var userID, hash string
 	stmt := "SELECT hash FROM user_auth WHERE email = $1"
 	row := db.QueryRow(stmt, username)
 	err := row.Scan(&hash)
@@ -124,21 +128,48 @@ func loginAuthHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		tpl.ExecuteTemplate(w, "login.html", "Something went wrong. Please try again later.")
 		return
 	}
-
+	// Get always returns a session, even if empty
+	// Returns error if exists and coulld not be decoded
+	session, err := store.Get(r, "session")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Session struct field Values map[interface{}]interface{}
+	session.Values["userID"] = userID
+	
+	// Save before writing to response/return from handler
+	session.Save(r, w)
 	// If the password is correct, the user has successfully logged in.
-	// fmt.Fprint(w, "You have successfully logged in :)")
-
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 
 }
 
+func logoutHandler (w http.ResponseWriter, r *http.Request) {
+	fmt.Println("*********logoutHandler running*****")
+	session, _ := store.Get(r, "session")
+	// The delete built-in function delets the element with the specified key (m[key]) from the map
+	// if m is nillor there is no such element, elete is a no-op
+	delete(session.Values, "userId")
+	session.Save(r, w)
+	tpl.ExecuteTemplate(w, "login.html", "Logged Out")
+}
+
 func searchHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// get session 
+		session, _ := store.Get(r, "session")
+		_, ok := session.Values["userID"]
+		fmt.Println("ok", ok)
+		if !ok {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
 		// Parse the query parameter from the URL
 		query := r.URL.Query().Get("title")
 
 		// Perform the database query
-		rows, err := db.Query("SELECT title, authors, num_pages, average_rating FROM books WHERE title ILIKE '%' || $1 || '%'", query)
+		rows, err := db.Query("SELECT title, authors, num_pages, average_rating, isbn FROM books WHERE title ILIKE '%' || $1 || '%'", query)
 		if err != nil {
 			log.Printf("Database query error: %v", err)
 			http.Error(w, "Database query error", http.StatusInternalServerError)
@@ -151,7 +182,7 @@ func searchHandler(db *sql.DB) http.HandlerFunc {
 
 		for rows.Next() {
 			var bookData BookData
-			err := rows.Scan(&bookData.Title, &bookData.Author, &bookData.Pages, &bookData.Rating)
+			err := rows.Scan(&bookData.Title, &bookData.Author, &bookData.Pages, &bookData.Rating, &bookData.Isbn)
 			if err != nil {
 				log.Printf("Error scanning query results: %v", err)
 				http.Error(w, "Error processing query results", http.StatusInternalServerError)
@@ -163,8 +194,6 @@ func searchHandler(db *sql.DB) http.HandlerFunc {
 
 			books = append(books, bookData)
 		}
-
-		//tpl := template.Must(template.ParseFiles("./templates/search.html"))
 
 		// Create a map to pass data to the template
 		data := map[string]interface{}{
